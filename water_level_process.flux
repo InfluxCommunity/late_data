@@ -9,8 +9,8 @@ from(bucket: "water_level_raw")
 // Compute and store new checksum for this window
 from(bucket: "water_level_raw")
     |> range(start: params.start, stop: params.stop)
-    |> group(columns: ["_measurement", "_field"])
+    |> group(columns: ["_measurement", "_field", "_stop"])
     |> count()
-    |> to(bucket: "water_level_checksum")
+    |> to(bucket: "water_level_checksum", timeColumn: "_stop")
     |> yield(name: "checksums")
 
