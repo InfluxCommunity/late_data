@@ -28,6 +28,20 @@ There is a python script `write.py` that writes data for each location every 10s
 
 This simulates both fresh data arrive at regular intervals and late data arriving spread out over the past.
 
+## Notification
+
+This branch also includes a Slack notification. This will trigger when late arriving data was detected. Here is the payload format:
+```
+WARNING: Late arriving data.
+Details:
+Measurment: water_level
+Time: 2022-06-13T14:58:51.000000000Z
+Old Count:  13809
+New Count : 13889
+Script trigger status:  200
+```
+*Note: Make sure you update the Slack hook url. This currently points to our community notification slack channel *
+
 ## Warning
 
 While this process works, it is not fool proof there are a few failure modes to be aware of.

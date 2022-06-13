@@ -12,6 +12,7 @@ option task = {name: "water_level_checksum", every: 5m, offset: 1m}
 
 token = secrets.get(key: "token")
 
+// Notification and check creation (optional)
 check = {_check_id: "i60mkgh05555", _check_name: "Late Data Check", _type: "custom", tags: {}}
 notification = {
     _notification_rule_id: "i60mkgh05555",
@@ -19,8 +20,11 @@ notification = {
     _notification_endpoint_id: "i60mkgh05556",
     _notification_endpoint_name: "Late Data Check Endpoint",
 }
+
+// trigger for alert. Only needs to check a value exists (optional)
 trigger = (r) => exists r["_value"] 
 
+// Message template for alert (optional)
 messageFn = (r) =>
 "WARNING: Late arriving data.
 Details:
