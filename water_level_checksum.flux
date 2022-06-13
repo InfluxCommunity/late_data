@@ -3,17 +3,39 @@ import "experimental/http/requests"
 import "json"
 import "date"
 import "experimental"
+import "slack"
+import "regexp"
+import "influxdata/influxdb/schema"
+import "influxdata/influxdb/monitor"
 
 option task = {name: "water_level_checksum", every: 5m, offset: 1m}
 
-token = secrets.get(key: "SELF_TOKEN")
+token = secrets.get(key: "token")
+
+check = {_check_id: "i60mkgh05555", _check_name: "Late Data Check", _type: "custom", tags: {}}
+notification = {
+    _notification_rule_id: "i60mkgh05555",
+    _notification_rule_name: "Late Data Check",
+    _notification_endpoint_id: "i60mkgh05556",
+    _notification_endpoint_name: "Late Data Check Endpoint",
+}
+trigger = (r) => exists r["_value"] 
+
+messageFn = (r) =>
+"WARNING: Late arriving data.
+Details:
+Measurment: ${r.field}
+Time: ${r._time}
+Old Count:  ${r.old_count}
+New Count : ${r.new_count}
+Script trigger status:  ${r.code}"
 
 // invokeScript calls a Flux script with the given start stop
 // parameters to recompute the window.
 invokeScript = (start, stop) =>
     requests.post(
         // We have hardcoded the script ID here
-        url: "https://eastus-1.azure.cloud2.influxdata.com/api/v2/scripts/095fabd404108000/invoke",
+        url: "https://us-east-1-1.aws.cloud2.influxdata.com/api/v2/scripts/0983182ad3ca1000/invoke",
         headers: ["Authorization": "Token ${token}", "Accept": "application/json", "Content-Type": "application/json"],
         body: json.encode(v: {params: {start: string(v: start), stop: string(v: stop)}}),
     )
@@ -34,7 +56,6 @@ newCounts
     |> map(
         fn: (r) => {
             response = invokeScript(start: date.sub(d: 1h, from: r._time), stop: r._time)
-
             return {r with code: response.statusCode}
         },
     )
@@ -62,3 +83,15 @@ experimental.join(
         },
     )
     |> yield(name: "diffs")
+    // Add alert to notify user on late arriving data (optional)
+    |> last()
+    |> rename(columns: {"_field":"field"})
+    |> monitor["check"](data: check, messageFn: messageFn, crit: trigger)
+    |> filter(fn: trigger)
+    |> monitor["notify"](
+        data: notification,
+        endpoint:
+            slack["endpoint"](url: "https://hooks.slack.com/services/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")(
+                mapFn: (r) => ({channel: "#notifications-testing", text: "${r._message}", color: "#DC4E58"}),
+            ),
+    )
