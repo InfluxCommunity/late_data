@@ -4,7 +4,13 @@ import "json"
 import "date"
 import "experimental"
 
-option task = {name: "water_level_checksum", every: 5m, offset: 1m}
+option task = {name: "water_level_checksum", every: 1m, offset: 10s}
+
+// Size of the window to aggregate
+every = task.every
+
+// Longest we are willing to wait for late data
+late_window = 1h
 
 token = secrets.get(key: "SELF_TOKEN")
 
@@ -18,22 +24,22 @@ invokeScript = (start, stop) =>
         body: json.encode(v: {params: {start: string(v: start), stop: string(v: stop)}}),
     )
 
-// Only query windows that span a full hour
-start = date.truncate(t: -1d, unit: 1h)
-stop = date.truncate(t: now(), unit: 1h)
+// Only query windows that span a full minute
+start = date.truncate(t: -late_window, unit: every)
+stop = date.truncate(t: now(), unit: every)
 
 newCounts =
     from(bucket: "water_level_raw")
         |> range(start: start, stop: stop)
         |> group(columns: ["_measurement", "_field"])
-        |> aggregateWindow(every: 1h, fn: count)
+        |> aggregateWindow(every: every, fn: count)
 
 // Always compute the most recent interval
 newCounts
     |> filter(fn: (r) => r._time == stop)
     |> map(
         fn: (r) => {
-            response = invokeScript(start: date.sub(d: 1h, from: r._time), stop: r._time)
+            response = invokeScript(start: date.sub(d: every, from: r._time), stop: r._time)
 
             return {r with code: response.statusCode}
         },
@@ -56,7 +62,7 @@ experimental.join(
     |> filter(fn: (r) => r.old_count != r.new_count)
     |> map(
         fn: (r) => {
-            response = invokeScript(start: date.sub(d: 1h, from: r._time), stop: r._time)
+            response = invokeScript(start: date.sub(d: every, from: r._time), stop: r._time)
 
             return {r with code: response.statusCode}
         },

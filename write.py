@@ -22,19 +22,20 @@ with InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG) as _clie
         while True:
             now = datetime.utcnow()
 
-            for i in range(100):
+            for i in range(10):
                 _write_client.write("water_level_raw", INFLUX_ORG, {
                     "measurement": "h2o_feet",
                     "tags": {"location": "coyote_creek", "i": i},
                     "fields": {"water_level": random.randrange(1,100)},
                     "time": now},
                 )
-            for i in range(100):
-                late = now - timedelta(hours=random.randrange(1,23), minutes=random.randrange(0,59))
+            for i in range(10):
+                late = now - timedelta(minutes=random.randrange(0,59))
+                print(i, late)
                 _write_client.write("water_level_raw", INFLUX_ORG, {
                     "measurement": "h2o_feet",
                     "tags": {"location": "coyote_creek", "i": i},
                     "fields": {"water_level": random.randrange(1,100)},
                     "time": late},
                 )
-            time.sleep(10)
+            time.sleep(1)
